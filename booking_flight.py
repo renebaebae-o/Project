@@ -1,7 +1,7 @@
 
 
 # Initialize the seating map (2D list), each element represents a seat or section: 
-# "F" for Free.
+# "F" for Free 
 # "R" for Reserved 
 # "X" for Aisle, not bookable 
 # "S" for Storage, not bookable
@@ -80,6 +80,15 @@ def cancel_seat():
 def show_status():
     display_seats()  # Direct calls to defined display seat functions
 
+# Function 5: Extra Feature - Show number of available seats
+def show_remaining_seats():
+    count = 0  # Counter for available seats
+    for row in seat_map:
+        for seat in row:
+            if seat == "F":
+                count += 1  # Increment if seat is Free
+    print(f"\nThere are {count} seat(s) available for booking.")
+
 # Displays the main menu for user-selected operations
 def display_menu():
     print("\n===== Apache Airlines Booking System =====")
@@ -88,11 +97,13 @@ def display_menu():
     print("3. Cancel a seat")            # Cancel Booking
     print("4. Show booking status")      # Display the current seating plan
     print("5. Exit")                     # Log out of the system
+    print("6. Show number of available seats")  # Extra feature
+    
 # Main program entry, loop execution until user selects exit
 def main():
     while True:
         display_menu()  # Show menu
-        choice = input("Select an option (1-5): ")  # Get user options
+        choice = input("Select an option (1-6): ")  # Get user options
         if choice == "1":
             check_seat()  # Function 1: Seat check
         elif choice == "2":
@@ -103,10 +114,11 @@ def main():
             show_status() # Function 4: View Current Status
         elif choice == "5":
             print("Exiting the system. Goodbye!")  # Log out of the system
-            break  
+            break # Stop loop
+        elif choice == "6":
+            show_remaining_seats()
         else:
             print("Invalid input. Please enter a number between 1 and 5.")  # Input Invalid Handling
 
 # program entry
 if __name__ == "__main__":
-    main()

@@ -1,3 +1,36 @@
+import sqlite3
+import random
+import string
+
+# Save used reservation numbers (use set to avoid duplicates)
+used_references = set()
+
+# Generate a unique 8-digit reservation number
+def generate_booking_reference():
+    while True:
+        # 8 randomly selected characters from A-Z and 0-9
+        new_ref = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        # If this number has never been used
+        if new_ref not in used_references:
+            used_references.add(new_ref) # Add to collection to prevent duplication
+            return new_ref
+
+def init_database():
+    conn = sqlite3.connect("bookings.db")  # Connecting to the database
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bookings (
+            booking_ref TEXT PRIMARY KEY,
+            passport_number TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            seat_row INTEGER,
+            seat_col TEXT
+        );
+    """)  # Creating a Table Structure
+    conn.commit()
+    conn.close()
+
 
 
 # Initialize the seating map (2D list), each element represents a seat or section: 
@@ -47,13 +80,27 @@ def book_seat():
     try:
         row = int(seat[0]) - 1  # Row indexing
         col = ord(seat[1]) - ord("A")  # Column indexes
+      # Determine if the seat is “F” (empty)
         if seat_map[row][col] == "F":
-            # Updated to booked if space is available
-            seat_map[row][col] = "R"
-            print("Seat booked successfully.")
-        elif seat_map[row][col] == "R":
-            # If the seat has already been booked, you will be prompted that it cannot be rebooked.
-            print("Seat is already booked.")
+            # Collecting passenger information
+            first_name = input("Please enter the passenger's name:")
+            last_name = input("Please enter the passenger's last name:")
+            passport_number = input("Please enter your passport number:")
+            # Generate Booking Number
+            booking_ref = generate_booking_reference()
+            # Replace “F” in seat_map with a number.
+            seat_map[row][col] = booking_ref 
+            # Write to database bookings table
+            conn = sqlite3.connect("bookings.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO bookings (booking_ref, passport_number, first_name, last_name, seat_row, seat_col)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (booking_ref, passport_number, first_name, last_name, row + 1, seat[1]))
+            conn.commit()
+            conn.close()
+            # Success Tip
+            print(f"Booking Success! Your booking number is: {booking_ref}")
         else:
             # If it's an X or S region, it indicates that the booking cannot be made
             print("This seat cannot be booked.")
@@ -66,10 +113,19 @@ def cancel_seat():
     try:
         row = int(seat[0]) - 1  # Row indexing
         col = ord(seat[1]) - ord("A")  # Column indexes
-        if seat_map[row][col] == "R":
-            # If the seat is currently booked, it is canceled and becomes available
-            seat_map[row][col] = "F"
-            print("Booking cancelled successfully.")
+        # Get the current value of the position (may be F, number, X, S)
+        seat_value = seat_map[row][col]
+        # Determine if the position is a valid reservation number (not F/X/S)
+        if seat_map[row][col] not in ["F", "X", "S"]:
+            booking_ref = seat_value  # Record number
+            seat_map[row][col] = "F"  # Restore to a usable state
+            # Connect to the database and delete the corresponding numbered record in the bookings table.
+            conn = sqlite3.connect("bookings.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM bookings WHERE booking_ref = ?", (booking_ref,))
+            conn.commit()
+            conn.close()
+            print("The reservation has been successfully canceled and the seat is back to empty.")
         else:
             # Seats cannot be canceled if they are not in reserved status (may be empty, aisle, storage area)
             print("This seat is not currently booked.")
@@ -101,6 +157,7 @@ def display_menu():
     
 # Main program entry, loop execution until user selects exit
 def main():
+    init_database()
     while True:
         display_menu()  # Show menu
         choice = input("Select an option (1-6): ")  # Get user options
@@ -118,7 +175,7 @@ def main():
         elif choice == "6":
             show_remaining_seats()
         else:
-            print("Invalid input. Please enter a number between 1 and 5.")  # Input Invalid Handling
+            print("Invalid input. Please enter a number between 1 and 6.")  # Input Invalid Handling
 
 # program entry
 if __name__ == "__main__":
